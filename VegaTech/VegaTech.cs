@@ -61,7 +61,7 @@ namespace VegaTech
       {
         foreach (AvailablePart part in PartLoader.LoadedPartsList)
         {
-          if (part.name == "kerbalEVA")
+          if (part.name == "kerbalEVA" && part.partPrefab.GetComponent<VTEvaModule>() == null)
             part.partPrefab.gameObject.AddComponent<VTEvaModule>();
         }
       }

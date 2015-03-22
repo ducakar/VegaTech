@@ -28,47 +28,41 @@ namespace VegaTech
   [KSPAddon(KSPAddon.Startup.Flight, false)]
   public class FlightManager : MonoBehaviour
   {
-    #if VT_COURAGE
-    Part reboardedPart = null;
-    #endif
-
     void onCrewOnEva(GameEvents.FromToAction<Part, Part> action)
     {
-      #if VT_COURAGE
       ProtoCrewMember kerbal = action.to.protoModuleCrew[0];
+      Part kerbalPart = action.to;
+      Part cabinPart = action.from;
 
       if (VegaTech.manageCourage && kerbal.courage < VegaTech.evaCourage
-          && !isLandedAtHome(action.from.vessel))
+          && !cabinPart.vessel.isSituationComfortable())
       {
-        action.to.RemoveCrewmember(kerbal);
-        action.to.vessel.Die();
-        action.from.AddCrewmember(kerbal);
-        reboardedPart = action.from;
+        kerbalPart.GetComponent<KerbalEVA>().BoardPart(cabinPart);
+        cabinPart.CreateInternalModel();
+        cabinPart.SpawnCrew();
 
-        ScreenMessages.PostScreenMessage(kerbal.name + " is too scared to go to EVA",
-                                         5.0f, ScreenMessageStyle.UPPER_CENTER);
+        ScreenMessages.PostScreenMessage(kerbal.name + " is too scared to go to EVA", 5.0f,
+                                         ScreenMessageStyle.UPPER_CENTER);
       }
-      else
-      #endif
-      if (VegaTech.takePropellantOnEva)
+      else if (VegaTech.takePropellantOnEva)
       {
-        PartResource resource = action.to.GetComponent<PartResource>();
+        PartResource resource = kerbalPart.GetComponent<PartResource>();
 
-        double crewCount = action.from.vessel.GetCrewCount();
+        double crewCount = cabinPart.vessel.GetCrewCount();
         double crewReserve = crewCount * VegaTech.personalPropellantReserve;
         double fullPlusReserve = resource.maxAmount + crewReserve;
-        double amount = action.from.RequestResource(VegaTech.monoPropellantId, fullPlusReserve);
+        double amount = cabinPart.RequestResource(VegaTech.monoPropellantId, fullPlusReserve);
 
         if (amount > VegaTech.personalPropellantReserve + crewReserve)
         {
-          action.from.RequestResource(VegaTech.monoPropellantId, -crewReserve);
+          cabinPart.RequestResource(VegaTech.monoPropellantId, -crewReserve);
           resource.amount = amount - crewReserve;
         }
         else
         {
           double personShare = amount / (1.0 + crewCount);
 
-          action.from.RequestResource(VegaTech.monoPropellantId, -crewCount * personShare);
+          cabinPart.RequestResource(VegaTech.monoPropellantId, -crewCount * personShare);
           resource.amount = personShare;
         }
       }
@@ -120,8 +114,8 @@ namespace VegaTech
       }
     }
 
-    #if VT_COURAGE
-    public void LateUpdate()
+    #if false
+    public void Update()
     {
       if (VegaTech.preserveRotation && TimeWarp.CurrentRate > 1.0f
           && TimeWarp.WarpMode == TimeWarp.Modes.HIGH)
@@ -137,12 +131,6 @@ namespace VegaTech
 
           vessel.SetRotation(vessel.GetTransform().rotation * deltaRotation);
         }
-      }
-
-      if (reboardedPart != null)
-      {
-        reboardedPart.SpawnCrew();
-        reboardedPart = null;
       }
     }
     #endif
